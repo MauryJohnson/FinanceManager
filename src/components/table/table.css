@@ -1,0 +1,46 @@
+/* General table styling */
+table.excel-table {
+    width: 100%;
+    border-collapse: collapse; /* Collapses the border to remove double borders */
+    font-family: Arial, sans-serif; /* Set a clean font similar to Excel */
+    border: 2px solid #000; /* Border around the table */
+    margin: 20px 0; /* Margin for spacing */
+}
+
+/* Table header styling */
+table.excel-table thead {
+    background-color: lightblue; /* Light grey background for headers */
+    color: #000; /* Black text color */
+}
+
+table.excel-table th {
+    border: 1px solid  lightblue; /* Light grey border for header cells */
+    padding: 8px; /* Padding inside header cells */
+    text-align: left; /* Align text to the left */
+    font-weight: bold; /* Bold text for headers */
+}
+
+/* Table body styling */
+table.excel-table tbody tr:nth-child(odd) {
+    background-color: lightblue; /* Alternating row colors */
+}
+
+table.excel-table tbody tr:nth-child(even) {
+    background-color: #fff; /* White background for even rows */
+}
+
+table.excel-table td {
+    border: 1px solid #0e0404; /* Light grey border for table cells */
+    padding: 8px; /* Padding inside table cells */
+    text-align: left; /* Align text to the left */
+}
+
+/* Optional: Hover effect for rows */
+table.excel-table tbody tr:hover {
+    background-color: #e0e0e0; /* Light grey background on hover */
+}
+
+/* Optional: Border around the entire table */
+table.excel-table {
+    border: 2px solid #000; /* Border around the table */
+}
