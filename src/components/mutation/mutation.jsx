@@ -155,7 +155,7 @@ function Mutation({mode,setItems, setEntry, children,content,data,id}){
                 })
 
                 
-            }}contentEditable>
+            }}contentEditable value={content}>
             {content}
             </textarea>
             <div id={id} className="cancel" onMouseOver={(e)=>{

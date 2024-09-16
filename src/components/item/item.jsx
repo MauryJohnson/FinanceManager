@@ -70,11 +70,10 @@ function Entry({setItems,id,data,mode}){
                     </Mutation>
                 )
             default:  
-                let c = toString(entry);
                 
                 return (
                     <Mutation  setEntry={setEntry} 
-                    setItems={setItems} mode={mode} id={id} content = {c} data={entry}>
+                    setItems={setItems} mode={mode} id={id} content = {entry.amount} data={entry}>
                          <td  
                          id={id} >
                             
