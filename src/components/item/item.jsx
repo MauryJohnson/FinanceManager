@@ -24,7 +24,7 @@ function toString(json){
 //row1, row2 are components
 function Entry({setItems,id,data,mode}){
 
-        const [entry,setEntry] = useState(data);
+        //const [entry,setEntry] = useState(data);
 
             // Handler to restrict text deletions
         const handleInput = (event) => {
@@ -52,19 +52,19 @@ function Entry({setItems,id,data,mode}){
         switch(mode){
             case "title":
                 return (
-                    <Mutation setEntry={setEntry} setItems={setItems} mode={mode} id={id} content={entry.title} data={entry}>
+                    <Mutation  setItems={setItems} mode={mode} id={id} content={data.title} data={data}>
                     <td  id={id} onMouseOver={moveOverEdit}  className="title"></td>
                     </Mutation>
                 )
             case "time":
                 return (
-                    <Mutation setEntry={setEntry}  setItems={setItems} mode={mode} id={id} content={entry.time} data={entry}>
+                    <Mutation   setItems={setItems} mode={mode} id={id} content={data.time} data={data}>
                     <td  id={id} ></td>
                     </Mutation>
                 )
             case "duration":
                 return (
-                    <Mutation setEntry={setEntry}  setItems={setItems} mode={mode} id={id} content={entry.duration} data={entry} >
+                    <Mutation   setItems={setItems} mode={mode} id={id} content={data.duration} data={data} >
                     <td  
                     id={id} ></td>
                     </Mutation>
@@ -72,8 +72,8 @@ function Entry({setItems,id,data,mode}){
             default:  
                 
                 return (
-                    <Mutation  setEntry={setEntry} 
-                    setItems={setItems} mode={mode} id={id} content = {entry.amount} data={entry}>
+                    <Mutation  
+                    setItems={setItems} mode={mode} id={id} content = {data.amount} data={data}>
                          <td  
                          id={id} >
                             

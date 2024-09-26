@@ -1,7 +1,7 @@
 import { useState, Children, isValidElement, cloneElement, useRef,useEffect } from 'react'
 import "./mutation.css"
 import api from '../../modules/api/api';
-
+import Queue from '../../modules/queue/queue';
 
 
 function Mutation({mode,setItems, setEntry, children,content,data,id}){
@@ -20,11 +20,11 @@ function Mutation({mode,setItems, setEntry, children,content,data,id}){
 
     const add = async (newItem,index)=>{
 
-        index = parseInt(index.split(" ")[1]) +1
+        index = parseInt(index.split(" ")[1])
         console.warn("ADD:",newItem,index)
         
         newItem = {
-            "id":index,
+            "id":index+1,
             "title":"",
             "amount":"",
             "time":""
@@ -34,37 +34,52 @@ function Mutation({mode,setItems, setEntry, children,content,data,id}){
         
         //newItem.id = _id;
 
-        if(_id)
+        if(_id){
+            
             setItems((prevItems)=>{
 
-                let newItems = [...prevItems];
+                let newItems = [];//[...prevItems];
 
-                newItems.splice(index,0,newItem);
+                for(var v in prevItems){
+                    
+                    newItems.push(prevItems[v])
+
+                    if(v == index)
+                        newItems.push(newItem)
+
+                    if(v>=index)
+                        newItems[newItems.length-1].id+=1
+                }
+
+                console.warn(newItems)
 
                 return newItems;
 
             })
-    
+            
+        }
     }
 
     const remove = async (e,index)=>{
         index = parseInt(index.split(" ")[1])
         console.warn("remove:",index)
-
-        let id = await api(`deleteFinance/${localStorage.user}`,{id:index})
-        
-        //newItem.id = _id;
-
-        if(id)
-        //setItems((prevItems) => [...prevItems, newItem]);
         setItems((prevItems)=>{
 
-            let newItems = ([].concat(prevItems))
-            newItems.splice(index,1);
-            
+            let newItems = [] //([].concat(prevItems))
+            for(var p in prevItems){
+                if(p!=index)
+                    newItems.push(prevItems[p])
+            }
+            for(var p in newItems){
+                if(newItems[p].id>=index)
+                    newItems[p].id-=1
+            }
+            //newItems.splice(index,1);
+
             if(newItems.length==0){
                 newItems = [
-                    {
+                    {   
+                        "id":0,
                         "title":"",
                         "amount":"",
                         "time":""
@@ -72,32 +87,42 @@ function Mutation({mode,setItems, setEntry, children,content,data,id}){
                 ]
             }
 
+            console.warn(newItems)
+            
             return newItems;
         })
+        let id = await api(`deleteFinance/${localStorage.user}`,{id:index})
+       
     }
+
+    let timeoutQueue= new Queue({
+        "timeout":50,
+        "limit":1
+    })
 
     const update = async (newItem)=>{
 
         console.warn("UPDATE:",newItem)
-        
-        try{
-            await api(`updateFinance/${localStorage.user}`,newItem)
-        }catch(e){
-            console.error(e);
-        }
-        
-        /*
-        setEntry((prevItem)=>{
-            return {...prevItem,[Object.keys(newItem)[1]]:newItem[Object.keys(newItem)[1]]};
-        })*/
         
         setItems((prevItems)=>{
             let newItems =  [...prevItems]
 
             newItems[newItem.id][Object.keys(newItem)[1]] = newItem[Object.keys(newItem)[1]]
 
+            console.warn(newItems)
             return newItems
         })
+
+        if(await timeoutQueue.engage()){
+
+            try{
+                await api(`updateFinance/${localStorage.user}`,newItem)
+            }catch(e){
+                console.error(e);
+            }
+
+            
+        }
         
     
         
@@ -144,11 +169,45 @@ function Mutation({mode,setItems, setEntry, children,content,data,id}){
              style: { ...child.props.style, position: 'relative', height: '100%' }, // Ensure the child has a relative position and 100% height
         children: (
           <>
-            <textarea className="content" id={id} mode={mode} onInput={async (e)=>{
+            <textarea   onMouseOver = {(e)=>{
+                e.target = e.target.parentNode
+            for(var c in e.target.children){
+                if(e.target.children[c].style && e.target.children[c].className!="content")
+                e.target.children[c].style["opacity"] = 1;
+            }
+        }}
+        onMouseOut = {(e)=>{
+            e.target = e.target.parentNode
+            for(var c in e.target.children){
+                if(e.target.children[c].style && e.target.children[c].className!="content")
+                e.target.children[c].style["opacity"] = 0;
+            }
+        }} onMouseDown={
+                (e)=>{
+                    e.target=e.target.parentNode
+                    for(var c in e.target.children){
+                        if(e.target.children[c].style && e.target.children[c].className!="content"){
+
+                            if(e.target.children[c].style["opacity"]!= 1)
+                                e.target.children[c].style["opacity"] = 1;
+                            else{
+                                e.target.children[c].style["opacity"] = 0;
+                            }    
+                        
+                        }
+                    }
+                    
+                }
+            }  className="content" id={id} mode={mode} onInput={async (e)=>{
                 console.warn(e.target.getAttribute("mode")+" Input")
                 let v = e.target.value;
-                if(e.target.getAttribute("mode")=="amount")
-                    v = parseFloat(v)
+                
+                if(e.target.getAttribute("mode")=="amount"){
+                    //v = parseFloat(v)
+                    if(isNaN(v) && v!="-")
+                        v=0
+                }
+                
                 update({
                     id:parseInt(id.split(" ")[1]),
                     [e.target.getAttribute("mode")]:v

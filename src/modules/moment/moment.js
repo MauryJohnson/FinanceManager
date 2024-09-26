@@ -2,7 +2,8 @@
 //const df = require("date-fns")
 
 import * as df from 'date-fns'
-import * as dfz from 'date-fns-tz'
+import { toZonedTime }  from 'date-fns-tz'
+const utcToZonedTime = toZonedTime;
 
 function isAlpha(str) {
         return /^[A-Za-z]+$/.test(str);
@@ -25,7 +26,7 @@ function changeTimezone(date, ianatz) {
 
 class moment{
 
-  constructor(date,format,r){
+  constructor(date,format,relaxed=false){
         //console.log(date)
         var offsetCase = 0;
         if(date==null){
@@ -102,6 +103,7 @@ class moment{
             for(;start<format2.length-1;start+=1){
 
               //date2.split("").splice(start,1,"0").join("")
+              if(!relaxed)
               date2+="0";
             }
           }
@@ -127,12 +129,15 @@ class moment{
           format = format2;
           date = date2;
 
+          //console.warn("FORMAT:"+format)
+              
+          
           if(format.length<date.length && custom)
           date = date.substring(0,format.length);
 
 
             var format2 = format.replace(/'/gi,"");
-            if(format2.length>date.length)
+            if(format2.length>date.length && !relaxed)
               throw("mismatch length  with format and date:"+format2+" ->>"+date)
 
             if(types.length>1){
@@ -167,11 +172,13 @@ class moment{
               date = date2;
               format = format3;
 
+              
               this.date = df.parse(date,format,new Date())
             }
             else
               this.date = df.parse(date,format,new Date())
-
+          
+          //console.warn("Date format",date,format)
           //}
 
         }
@@ -267,11 +274,9 @@ class moment{
           var date = df.add(mmnt.date,{
                       "hours":mmnt.offset
                     });
-          var newDate = new Date(
-
-            Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds())
-
-          );
+          console.warn("SOME DATE:",date)
+          var userTimezoneOffset = date.getTimezoneOffset() * 60000;
+          var newDate = new Date(date.getTime() + userTimezoneOffset);
           for(var func of getAllFuncs(newDate)){
             if(func!="toISOString" && func.indexOf("get")==-1 && func!="valueOf" && func!="toString" && func!="constructor" && func.indexOf("_")==-1){
               newDate[func] = null;
@@ -310,7 +315,7 @@ class moment{
 
         
         this.timezone = function(tz){
-          mmnt.date = dfz.utcToZonedTime(mmnt.date, tz);
+          mmnt.date = utcToZonedTime(mmnt.date, tz);
         }
         /*
         {
@@ -381,7 +386,7 @@ class moment{
           let timeDiff;
 
           if(!mmnt.timeZone){
-            timeDiff = -1*(dfz.utcToZonedTime(mmnt.toDate(), timeZone).getTimezoneOffset()/60+1) //- this.toDate().getTimezoneOffset()/60;
+            timeDiff = -1*(utcToZonedTime(mmnt.toDate(), timeZone).getTimezoneOffset()/60+1) //- this.toDate().getTimezoneOffset()/60;
           }
           /*
           else if(mmnt.timeZone!=timeZone){

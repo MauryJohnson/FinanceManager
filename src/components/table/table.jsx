@@ -35,23 +35,26 @@ function Table({rows}){
     let net = items.reduce((accumulator, currentValue, index, array) => {
         // Return the updated accumulator
 
-        return accumulator + (currentValue.amount||0);
+        return parseFloat(accumulator) + parseFloat(currentValue.amount||0);
       }, 0);
 
     return (
         <table className="excel-table">
             <tbody>
             <tr>
+            <td>Title</td>
                 {
                     items.map((data,i)=><Entry id={i} setItems={setItems} data={data} mode="title"  />)
                 }
             </tr>
             <tr>
+                <td>Amount</td>
                 {
                     items.map((data,i)=><Entry setItems={setItems} id={i} data={data} mode="amount" />)
                 }
             </tr>
             <tr>
+            <td>Dates</td>
                 {
                     items.map((data,i)=><Entry id={i} setItems={setItems} data={data} mode="time"  />)
                 }

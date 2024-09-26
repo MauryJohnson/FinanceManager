@@ -5,7 +5,8 @@ import dotenv from "dotenv";
 import MF from "./modules/mongofactory/MongoFactory.js"
 import cors from 'cors'
 
-
+import https  from 'https'
+import fs from 'fs'
 let start = async function(){
   let Mongo = new MF({
     "url":"mongodb://localhost:27017/admin?serverSelectionTimeoutMS=5000"
@@ -92,10 +93,30 @@ app.use(cors());
     )
 
   })
- 
-  app.listen(port,"0.0.0.0", () => {
-    console.log(`Server is running on http://localhost:${port}`);
+  
+  // Define the path to your SSL certificate and key
+  const privateKey = fs.readFileSync(path.join("/etc/letsencrypt/live/optimalfrequencytrader.com/", 'privkey.pem'), 'utf8');
+  const certificate = fs.readFileSync(path.join("/etc/letsencrypt/live/optimalfrequencytrader.com/", 'fullchain.pem'), 'utf8');
+
+  const credentials = { key: privateKey, cert: certificate };
+
+  // Create an HTTPS server
+  const httpsServer = https.createServer(credentials, app);
+
+  // Define the port and start the server
+  //const PORT = 5173; // Standard HTTPS port is 443
+  
+  httpsServer.listen(port, () => {
+    console.log(`HTTPS Server running on port ${port}`);
   });
+  
+  app.listen(port+1, () => {
+    console.log(`HTTPS Server running on port ${port}`);
+  });
+  
+  
+
+
 
   if(false)
   new Promise(async function(rs,rj){
