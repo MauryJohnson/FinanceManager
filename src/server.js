@@ -43,6 +43,19 @@ app.use(cors());
     res.json((await Mongo.Mongo.db("financeManager").listCollections().toArray()).map(x=>x.name));
 
   })
+
+  app.post('/api/getCollections',async (req,res)=>{
+    res.json((await Mongo.Mongo.db(req.body.db).listCollections().toArray()).map(x=>x.name));
+  })
+
+  app.post('/api/getDB',async (req,res)=>{
+    res.json(await Mongo.Query(req.body));
+  })
+
+  app.post('/api/updateDB',async (req,res)=>{
+    res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).updateMany(...req.body.update));
+  })
+
   app.get('/api/getFinances/*',async (req,res)=>{
     let path = req.url.split("/").map(x=>decodeURIComponent(x));
     res.json(await Mongo.Query({

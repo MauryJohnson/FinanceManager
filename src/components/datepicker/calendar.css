@@ -3,3 +3,59 @@
     background-color: #333;
     color: #fff;
 }
+
+
+icon{
+                
+    fontSize:24px;
+ 
+    margin:10px;
+ 
+    display:inline-block;
+    
+ }
+
+ .iconX{
+     
+    color:red;
+ 
+    position:absolute;
+ 
+    top:0;
+ 
+    left:0;
+ 
+ }
+
+ .iconX::before{
+    color:red;
+    content:✖;
+ 
+ }
+
+ .iconCheck{
+     
+    color:green;
+ 
+    position:absolute;
+ 
+    top:0;
+ 
+    right:0;
+ 
+ }
+
+ .iconCheck::before{
+    color:green;
+
+    content:'✔';
+ 
+ }
+
+.selected{
+    border:2px solid;
+}
+
+ .unselected{
+    display:none;
+ }

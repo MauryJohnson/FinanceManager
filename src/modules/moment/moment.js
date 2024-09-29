@@ -451,6 +451,10 @@ class moment{
           return mmnt.isBefore(m) || mmnt.isEqual(m)
         }
 
+        this.isSame=function(m){
+          return mmnt.isEqual(m)
+        }
+
         this.diff = function(m,interval = ""){
           interval = parseInterval(interval)
           //console.log(interval)

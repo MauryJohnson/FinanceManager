@@ -1,10 +1,13 @@
 import React, { useState, useEffect,useRef,createRef } from 'react';
+import ReactDOM from 'react-dom';
+
 import rome from '@bevacqua/rome';
 import moment from '../../modules/moment/moment.js'
 import moment2 from 'moment'
 import PropTypes from 'prop-types';
 import '@bevacqua/rome/dist/rome.min.css';
 import './calendar.css';
+import TimePicker from './timepicker.jsx';
 
 rome.use(moment2);
 
@@ -13,7 +16,8 @@ export const DatePicker = props => {
 };
 
 DatePicker.propTypes = {
-  onSelectDate: PropTypes.func.isRequired
+  onChange: PropTypes.func.isRequired,
+  onNext:PropTypes.func.isRequired
 };
 const StepMap = {
 
@@ -120,40 +124,82 @@ const StepMap = {
   
 
 // Include the crypto-js library
-import md5 from 'md5';//require("crypto-js");
-
-function stringToRGB(inputString) {
-    // Step 1: Compute the MD5 hash
-    const md5Hash = md5(inputString).toString();
-
-    // Step 2: Convert the first 6 characters of the hash to RGB
-    const r = parseInt(md5Hash.substr(0, 2), 16); // Red
-    const g = parseInt(md5Hash.substr(2, 2), 16); // Green
-    const b = parseInt(md5Hash.substr(4, 2), 16); // Blue
-
-    return { r, g, b };
-}
-
-// Example usage
-const inputString = "Hello, World!";
-const rgbValues = stringToRGB(inputString);
-console.log(`RGB values for '${inputString}':`, rgbValues);
-
 
 //Datepicker allows multiple dates to dictate how many
-function Calendar({onSelectDate=function(date){
+function Calendar({update=()=>{},onNext=function(date){
+  console.warn("Next:",date)
+},onChange=function(date){
     console.warn(`Selected Date:${date}`)
-},StartTime,EndTime,Step="1M"}){
+},StartTime,EndTime,Step=10}){
 
-    let start = new moment(StartTime,"MM/dd/yyyy hh:mm:ss a");
+    let start;
+    
+    if(StartTime)
+      start = StartTime
     
     const elementRef = createRef(null);
     const pickerRef = createRef(null);
-    let [RomeMap,UpdateRome] = useState({});
-    let [Months,UpdateMonths] = useState(10);
+    let RomeMap = {};
+    let [Update,UpdateState] = useState(0);
+
+    function maxDate(){
+      let date;
+      for(var year in RomeMap){
+        for(var month in RomeMap[year]){
+            for(var day in RomeMap[year][month]){
+              if(!date){
+                date = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true)
+              }
+              else{
+                let date2 = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true);
+                if(date2.isAfter(date))
+                    date = date2;
+              }
+            }
+        }
+      }
+      return date;
+    }
+
+    function minDate(){
+      let date;
+      for(var year in RomeMap){
+        for(var month in RomeMap[year]){
+            for(var day in RomeMap[year][month]){
+              if(!date){
+                date = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true)
+              }
+              else{
+                let date2 = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true);
+                if(date2.isBefore(date))
+                    date = date2;
+              }
+            }
+        }
+      }
+      return date;
+    }
+
+    function Apply(cb){
+      let applied= false;
+      for(var year in RomeMap){
+        for(var month in RomeMap[year]){
+            for(var day in RomeMap[year][month]){
+              applied = applied || cb({
+                year,month,day,elem:RomeMap[year][month][day]
+              })
+            }
+        }
+      }
+      if(applied){
+        console.warn("APPLYING ROME:"+(++Update))
+        UpdateState(++Update)
+      }
+    }
+    let [Months,UpdateMonths] = useState(Step);
 
     function DaySelected({Year,Month,Day}){
-      let ds = RomeMap[Year][Month][Day].className.indexOf("rd-day-selected")!=-1;
+      let ds = ((((RomeMap[Year]||{})[Month]||{})[Day]||{}).className||"").indexOf("rd-day-selected")!=-1;
       console.warn(Month+" "+Day+" "+Year+" Selected:"+ds);
       return ds;
     }
@@ -167,10 +213,10 @@ function Calendar({onSelectDate=function(date){
         
         for(var month in Obj[year]){
 
-          let date = new moment(month+" "+year,"MMMM yyyy");
+          let date = new moment(month+" "+year,"MMMM yyyy",true);
 
           if(!maxdate)
-            maxdate = new moment(month+" "+year,"MMMM yyyy");
+            maxdate = new moment(month+" "+year,"MMMM yyyy",true);
 
           if(maxdate.diff(date,"month") > max){
             max = maxdate.diff(date,"month");
@@ -180,16 +226,84 @@ function Calendar({onSelectDate=function(date){
 
       }
       return max+1;
-    }
+    } 
     
     //useEffect is called after html is created.
     useEffect(() => {
-        pickerRef.current = rome(elementRef.current, {time:false, "inputFormat": "MM/DD/YYYY", monthsInCalendar: Months });
-        pickerRef.current.on('data', data => onSelectDate(data));
+        pickerRef.current = rome(elementRef.current, {time:false,initialValue:start.format("MM/dd/yyyy"), "inputFormat": "MM/DD/YYYY", monthsInCalendar: Months });
+        
+        let lastSelected;
+        pickerRef.current.on('data', data => {
+            //console.warn(data)
+            let m = new moment(data,"MM/dd/yyyy");
+            let md = maxDate();
+            let md2 = minDate();
+            //console.warn(md,md2)
+            //console.warn(`Selected date:${m.format("MM/dd/yyyy")}, Max date:${md.format("MM/dd/yyyy")}`)
+            if(m.isAfter(md) || m.isBefore(md2)){
+              
+              console.warn("NEXT, REFRESHING ROME:"+(++Update))
+              return UpdateState(++Update)
+            }
+
+            let elem = RomeMap[
+              m.format("yyyy")
+            ][m.format("MMMM")][m.format("dd")]
+
+            if(lastSelected?.Exit){
+              lastSelected.Exit()
+            }
+
+            elem.Exit = ()=>{
+              
+              //if(lastSelected?.innerText!=elem.innerText)
+              ReactDOM.unmountComponentAtNode(elem)
+
+              //alert(m.format("dd"))
+              elem.innerText = m.format("dd");
+
+              delete elem.Exit
+            }
+
+            console.warn("Create Portal",elem)
+            let portal = ReactDOM.render(
+              <>
+              <TimePicker Parent={elem.parentNode.parentNode}
+                  Day = {new moment()}
+                  Exit={elem.Exit}
+              ></TimePicker>
+              </>,
+              elem
+            ); 
+
+            lastSelected = elem;
+
+            console.warn("portal",portal)
+            /*
+            onChange({
+            Element:pickerRef.current.associated,
+            Rome:pickerRef.current,
+            RomeMap,
+            data,
+            Apply
+            
+           })*/
+        });
+
+
+        pickerRef.current.on('next', data => onNext({
+          Element:pickerRef.current.associated,
+          Rome:pickerRef.current,
+          RomeMap,
+          data,
+          Apply
+        }));
 
         let tables = pickerRef.current.associated.children[0].children[0].children
         //console.warn(tables)
         
+        RomeMap = {};
+
         for(var table of tables){
           //console.warn(table.children[table.children.length-1])
           //console.warn(table.querySelectorAll('div')[0])
@@ -210,7 +324,7 @@ function Calendar({onSelectDate=function(date){
             //console.warn(row)
             for(var day of row.children){
               //console.warn(day)
-              if(day.innerText)
+              if(day.innerText && day.className.indexOf("next")==-1 && day.className.indexOf("prev")==-1)
                 RomeMap[year][month][day.innerText] = (day);
             }
           }
@@ -220,18 +334,26 @@ function Calendar({onSelectDate=function(date){
 
         console.warn("Months in current MAP:",monthsInCalendar(RomeMap))
 
-
-
         DaySelected({
           Year:2024,
           Month:"September",
           Day:"25"
         });
 
-        return () => pickerRef.current.off();
-    }, []);
+        //Make whatever changes necessary to the Rome
+        update({
+          Element:pickerRef.current.associated,
+          Rome:pickerRef.current,
+          RomeMap,
+          Apply
+        })
 
-  return <div ref={elementRef} />;
+        return () => pickerRef.current.off();
+    }, [Update]);
+
+  return <div  style={
+    {width:"100%",display:"inline-block"}
+  } ref={elementRef} />;
  
 }
 
