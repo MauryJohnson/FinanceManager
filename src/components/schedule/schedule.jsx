@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../../modules/api/api.js'
 import Calendar from '../datepicker/calendar'
 import ColorCodes from '../colorcodes/colorcodes'
+import ReactDOM from 'react-dom';
+import TimePicker from '../datepicker/timepicker.jsx';
 
 import moment from '../../modules/moment/moment.js'
 import md5 from 'md5';
@@ -53,6 +55,12 @@ let styleMap = {
     }
     
 };
+
+function SortDict(dict){
+    return Object.fromEntries(
+        Object.entries(dict).sort(([a, ], [b, ]) => a.localeCompare(b))
+    );
+}
 function applyStyles(styles2={}){
     let styleText = ``;
     for(var s in styles2){
@@ -81,27 +89,79 @@ function applyStyles(styles2={}){
 function Schedule({ setup, userData, data = [] }) {
     applyStyles();
 
-    data = ["", "Add Schedule"].concat(data);
+    data = ["", "Add Schedule","Add Bill"].concat(data);
     //alert(applyStyles())
     const [schedules, setSchedules] = useState(data);
     const [currentState, updateState] = useState({
         currentSchedule:"",Users:[],UserColors:{}
     });
     function getUser(user){
-        return currentState.Users.filter(x=>x._id==user)[0];
+        return currentState.Users.filter(x=>x.name==user)[0];
     }
+    function revertColor({r,g,b}){
+        return {
+            r2:Math.abs(255-r),
+            g2:Math.abs(255-g),
+            b2:Math.abs(255-b)
+        }
+    }
+
+    function isWithinTime(a,b){
+        if(b.length<2)
+            return true;
+        //console.warn(a,b)
+        let atime = new moment(a.format("hh:mm a"),"hh:mm a")
+        return atime.isSameOrAfter(new moment(b[0],"hh:mm a")) &&
+        atime.isSameOrBefore(new moment(b[1],"hh:mm a"))
+    }
+
     function isScheduled({user,day,month,year}){
+        //console.warn("Is scheduled")
         return currentState.Users.filter(x=>{
             //console.warn(x)
             //console.warn(month,day,year)
-            return user == x._id && x.Schedule.filter(y=>{
+            return user == x.name && [x].filter(y=>{
+                
                 let m = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true)
                 //console.warn(m)
                 //console.warn(y+"=="+m)
-                return y === m.format("EEEE")
+                switch(y.Type){
+                    case "CurrentDay":
+                            //console.warn(y)
+                            return y.StartDate === m.format("MM/dd/yyyy")
 
+                        
+                    case "Repeat":
+                            let m2 = new moment(y.StartDate,"MM/dd/yyyy");
+
+                            return m2.format("EEEE") === m.format("EEEE") && m.isSameOrAfter(m2)
+
+                        break;
+
+                    case "Range":
+
+                            
+
+                        break;
+                }
+
+                
             }).length>0
         }).length>0
+    }
+
+    function combineColors(elem){
+        let s = "";
+
+        let users = Object.keys(elem.UserColors);
+
+        for(var u in users){
+            s+=users[u]+(
+                u<users.length-1?"_and_":""
+            )
+        }
+
+        return s || userData.given_name;
     }
 
     console.warn("Schedule data", schedules);
@@ -110,18 +170,22 @@ function Schedule({ setup, userData, data = [] }) {
         const selectedValue = event.target.value;
         console.warn(selectedValue);
 
-        if (selectedValue === data[1]) {
-            const newSchedule = prompt("Enter Schedule name");
+        if (selectedValue === data[1] || selectedValue === data[2]) {
+            let type = selectedValue.split(" ")[1];
+
+            const newSchedule = prompt(`Enter ${type} Name`);
+            
             if (newSchedule) {
                 await api("updateDB", {
-                    db: "dishes",
+                    db: "schedules",
                     collection: newSchedule,
                     update: [
-                        { _id: userData.given_name },
+                        { name: userData.given_name },
                         {
                             $set: {
-                                _id: userData.given_name,
-                                Schedule: [],
+                                name: userData.given_name,
+                                //Schedule: {},
+                                ScheduleType:type,
                                 email: userData.email,
                             },
                         },
@@ -129,7 +193,7 @@ function Schedule({ setup, userData, data = [] }) {
                     ],
                 });
 
-                const schedules = await api("getCollections", { db: "dishes" });
+                const schedules = await api("getCollections", { db: "schedules" });
                 console.warn("new Schedules", schedules);
 
                 setSchedules((oldSchedules) => [...oldSchedules, newSchedule]);
@@ -137,11 +201,11 @@ function Schedule({ setup, userData, data = [] }) {
         } else {
             let scheduledData = await api("getDB",{
                 "type":"aggregate",
-                "database":"dishes",
+                "database":"schedules",
                 "collection":event.target.value,
                 "query":[{
                 $match:{
-                    "_id":userData.given_name
+                    "name":userData.given_name
                 }
                 }],
                 "options":{allowDiskUse:true}
@@ -151,15 +215,27 @@ function Schedule({ setup, userData, data = [] }) {
             
             if(scheduledData.length===0){
                 console.warn(`${userData.given_name} does not exist, adding to ${event.target.value}`);
+                scheduledData = await api("getDB",{
+                    "type":"aggregate",
+                    "database":"schedules",
+                    "collection":event.target.value,
+                    "query":[{
+                    $match:{
+                        
+                    }
+                    }],
+                    "options":{allowDiskUse:true}
+                })
                 await api("updateDB", {
-                    db: "dishes",
+                    db: "schedules",
                     collection: event.target.value,
                     update: [
-                        { _id: userData.given_name },
+                        { name: userData.given_name },
                         {
                             $set: {
-                                _id: userData.given_name,
-                                Schedule: [],
+                                name: userData.given_name,
+                                //Schedule: {},
+                                ScheduleType:scheduledData[0].Type||"N/A",
                                 email: userData.email,
                             },
                         },
@@ -173,14 +249,26 @@ function Schedule({ setup, userData, data = [] }) {
 
             const users = await api("getDB", {
                 type: "aggregate",
-                database: "dishes",
+                database: "schedules",
                 collection: selectedValue,
                 query: [{ $match: {} }],
                 options: { allowDiskUse: true },
             });
             let UserColors = {}
             for(var user of users){
-                UserColors[user._id]=stringToRGB(user._id)
+                UserColors[user.name]=stringToRGB(user.name);
+                
+                let {r,g,b} = UserColors[user.name];
+
+                let {r2,g2,b2} = revertColor(UserColors[user.name]);
+
+                applyStyles({
+                    [`.${user.name}`]:{
+                        "background":`rgb(${r},${g},${b})`,
+                        "color":`rgb(${r2},${g2},${b2})`
+                        //"opacity":"0.2"
+                    }
+                })
             }
 
             updateState({
@@ -213,7 +301,44 @@ function Schedule({ setup, userData, data = [] }) {
         }>
         </ColorCodes>
 
-        <Calendar update={
+        <Calendar onData={
+            async ({
+                data,elem
+            })=>{
+
+                
+                ReactDOM.render(
+                <>
+                <TimePicker 
+                    Parent={elem.parentNode.parentNode}
+                    
+                    Day = {new moment(data,"MM/dd/yyyy")}
+
+                    currentSchedule={currentState.currentSchedule}
+                    
+                    className={
+                        //currentState.UserColors[
+                            combineColors(elem).replace(/\ /gi,"_")
+                        //]
+                    }
+
+                    userData={userData}
+                    
+                    Exit={ (Dict)=>{ 
+                        
+                        elem.Exit(Dict);
+
+
+
+                     }}
+                ></TimePicker>
+                </>,
+                elem
+              ); 
+                
+
+            }
+        } update={
             //Div, Rome class, and RomeMap
             //{Element,Rome,RomeMap}
             (Dict)=>{
@@ -226,6 +351,7 @@ function Schedule({ setup, userData, data = [] }) {
                     day,
                     elem
                 })=>{
+
                     //console.warn(month,day,year,elem)
                     let previousColor;
                     let preferredColor = {
@@ -233,56 +359,73 @@ function Schedule({ setup, userData, data = [] }) {
                         color:currentState.UserColors[userData.given_name]
                     }
 
+                    if(!elem.UserColors)
+                        elem.UserColors = {}
+
+                    if(!elem.originalClass)
+                        elem.originalClass = elem.className
+
                     for(var user in currentState.UserColors){
 
                         if(!isScheduled({user,day,month,year})){
                             
-                            elem.className = elem.className.replace(user.replace(/\ /gi,"_"),"")
+                            //elem.className = elem.className.replace(user.replace(/\ /gi,"_"),"")
+
+                            delete elem.UserColors[user]
 
                             continue;
                         }
 
-                        //console.warn(day+"/"+month+"/"+year+" is scheduled for ",user)
-                        if(
-                            elem.className.indexOf(
-                            user
-                        ) == -1)
-                            elem.className+=` ${user.replace(/\ /gi,"_")}  `;
-                            
-
-                        if(previousColor){
-                            //console.warn("Previous Color:",previousColor)
-                            if(elem.className.indexOf(user)!=-1){
-                                console.warn("Other color:",currentState.UserColors[user])
-
-                                let combinedColor = {
-                                    r: Math.abs(previousColor.r - currentState.UserColors[user].r)%255,
-                                    g: Math.abs(previousColor.g - currentState.UserColors[user].g)%255,
-                                    b: Math.abs(previousColor.b - currentState.UserColors[user].b)%255,
-                                }
-
-                                //console.warn("Combined Color",combinedColor)
-                                
-                                preferredColor = {user:user,color:combinedColor};
-                                continue;
-                            }
-                        }   
-                        previousColor =  currentState.UserColors[user]
-                        preferredColor = {user,color:currentState.UserColors[user]}
-
+                        if(user.indexOf("_and_")!=-1)
+                            continue;
+                        
+                        //if( !elem.UserColors[user] ){
+                            //elem.className+=` ${user.replace(/\ /gi,"_")}  `;
+                        elem.UserColors[user] = true;
+                        //}
+                        
                     }
 
+                    elem.UserColors = SortDict(elem.UserColors);
+
+                    if(Object.keys(elem.UserColors).length>0){
+
+                        let s = combineColors(elem)
+                        
+                        if(!currentState.UserColors[s]){
+                            console.warn("NEW USER:"+s)
+                            currentState.UserColors[s] = stringToRGB(s)
+                            updateState({
+                                ...currentState,
+                            })
+                        }
+
+                        preferredColor = {user:s,
+                            color:currentState.UserColors[s]}
+
+                        console.warn("PReferred color",preferredColor)
+                    }
+                    else{
+                        elem.className =  elem.originalClass  
+                    }
                     if(preferredColor.user){
                         let {r,g,b} = preferredColor.color
+                        let {r2,g2,b2} = revertColor(preferredColor.color)
 
+                        elem.className =  elem.originalClass+" "+(
+                            preferredColor.user.replace(/\ /gi,"_")
+                        );
                         //console.warn(r,g,b)
                         //alert(r,b,g)
                         applyStyles({
                             [`.${preferredColor.user.replace(/\ /gi,"_")}`]:{
                                 "background":`rgb(${r},${g},${b})`,
+                                "color":`rgb(${r2},${g2},${b2})`
                                 //"opacity":"0.2"
                             }
                         })
+
+                        console.warn("STyle Map",styleMap)
                     }
 
                 })
@@ -303,37 +446,101 @@ function Schedule({ setup, userData, data = [] }) {
             //{Element,Rome,RomeMap}
             async (Dict)=>{
 
+                /*
                 let m = new moment(Dict.data,"MM/dd/yyyy")
                 console.warn(Dict.data)
 
-                let myUser = getUser(userData.given_name);
-
+                
                 if(myUser.Schedule.length>=4 && myUser.Schedule.indexOf(m.format("EEEE"))==-1){
                     alert("too many days scheduled")
                     return;
-                }
+                }*/
+                
+                console.warn(Dict)
 
-                await api("updateDB", {
-                    db: "dishes",
-                    collection: currentState.currentSchedule,
-                    update: [
-                        { _id: userData.given_name }, 
-                        {
-                            [myUser.Schedule.indexOf(m.format("EEEE"))==-1?"$addToSet":"$pull"]: {
-                                Schedule: m.format("EEEE"),
-                            },
-                        },
-                        { upsert: true },
-                    ],
-                });
+                //let myUser = getUser(userData.given_name);
+
+                let operation;
+                let vars;
+                switch(Dict.Type){
+                    case "CurrentDay":
+                            vars = {
+                                Type:Dict.Type,
+                                StartDate:Dict.StartDate,
+                                TimeRange:Dict.TimeRange.map(x=>{
+                                    return x.format("hh:mm a")
+                                })
+                            };
+
+                            operation = currentState.Users.filter((s)=>{
+                                return s.name == userData.given_name && s.StartDate==Dict.StartDate 
+                                        /*&&
+                                        s.TimeRange.join(" ") == Dict.TimeRange.join(" ")
+                                        */
+                            }).length==0?"add":"remove"
+
+                        break;
+
+                    case "Repeat":
+                            
+                            vars = {
+                                Type:Dict.Type,
+                                StartDate:Dict.StartDate,
+                                Repeat:Dict.Repeat,
+                                TimeRange:Dict.TimeRange.map(x=>{
+                                    return x.format("hh:mm a")
+                                })
+                            }
+
+                            operation = currentState.Users.filter((s)=>{
+                                return s.name == userData.given_name && s.Repeat==(Dict.Repeat) && s.StartDate==Dict.StartDate
+                            }).length==0?"add":"remove"
+                        break;
+
+                    case "Range":
+
+                        break;
+                }
+                
+                let myUser = currentState.Users.filter(u=>{
+                    return u.name==userData.given_name
+                })[0];
+
+                if(operation=="add")
+                    await api("insertDB", {
+                        db: "schedules",
+                        collection: currentState.currentSchedule,
+                        insert: {
+                                name: userData.given_name, 
+                                ScheduleType:myUser.ScheduleType,
+                                ...vars,
+                                email: userData.email
+                            }
+                        }
+                    );
+                else{
+                    await api("removeDB", {
+                        db: "schedules",
+                        collection: currentState.currentSchedule,
+                        remove: {
+                                name: userData.given_name, 
+                                ScheduleType:myUser.ScheduleType,
+                                ...vars,
+                                email: userData.email
+                            }
+                        }
+                    ); 
+                }
 
                 const users = await api("getDB", {
                     type: "aggregate",
-                    database: "dishes",
+                    database: "schedules",
                     collection: currentState.currentSchedule,
                     query: [{ $match: {} }],
                     options: { allowDiskUse: true },
                 });
+
+                console.warn(users)
 
                 //if(myUser.Schedule.indexOf(m.format("EEEE"))==-1){
                     updateState({
@@ -341,16 +548,17 @@ function Schedule({ setup, userData, data = [] }) {
                         Users:users
                     })
                 //}
-                myUser = users.filter(u=>u._id ===userData.given_name)[0]
+                myUser = users.filter(u=>u.name ===userData.given_name)
 
-                console.warn("My Schedule:"+myUser.Schedule)
+                console.warn("Some Schedules:",myUser)
+                
                 Dict.Apply(({
                     year,
                     month,
                     day,
                     elem
                 })=>{
-                    let m = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true)
+                    //let m = new moment(`${month}/${day}/${year}`,"MMMM/dd/yyyy",true)
 
                     //if(myUser.Schedule.indexOf(m.format("EEEE"))!=-1){
                         //console.warn("Found")

@@ -13,7 +13,7 @@ await async function(){
 
 
     let ud = await api("updateDB",{
-        "db":"dishes",
+        "db":"schedules",
         "collection":"schedule1",
         "update":[
             {_id:"Maury"},
@@ -32,7 +32,7 @@ await async function(){
       })
 
       let ud2 = await api("updateDB",{
-        "db":"dishes",
+        "db":"schedules",
         "collection":"schedule1",
         "update":[
             {_id:"Elham"},
@@ -90,7 +90,7 @@ await async function(){
                 console.log('User Info:', userData);
                 let setup = document.getElementById("setup");
                 //setup.children[0].innerText = "Select a Schedule"
-                let schedules = await api("getCollections",{"db":"dishes"});
+                let schedules = await api("getCollections",{"db":"schedules"});
                 console.warn("Schedules:",schedules)
                 
                 //let root = createRoot(document.getElementById('root3'));
@@ -99,7 +99,7 @@ await async function(){
                 root.render(
                     <>
                         <Schedule setup={setup} root={root} userData={userData} data={
-                            await api("getCollections",{"db":"dishes"})
+                            await api("getCollections",{"db":"schedules"})
                         }></Schedule>
                     </>
                 )

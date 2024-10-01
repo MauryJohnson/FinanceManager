@@ -56,6 +56,14 @@ app.use(cors());
     res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).updateMany(...req.body.update));
   })
 
+  app.post('/api/insertDB',async (req,res)=>{
+    res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).insertOne(req.body.insert));
+  })
+
+  app.post('/api/removeDB',async (req,res)=>{
+    res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).deleteMany(req.body.remove));
+  })
+
   app.get('/api/getFinances/*',async (req,res)=>{
     let path = req.url.split("/").map(x=>decodeURIComponent(x));
     res.json(await Mongo.Query({

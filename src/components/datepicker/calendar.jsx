@@ -126,7 +126,7 @@ const StepMap = {
 // Include the crypto-js library
 
 //Datepicker allows multiple dates to dictate how many
-function Calendar({update=()=>{},onNext=function(date){
+function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
   console.warn("Next:",date)
 },onChange=function(date){
     console.warn(`Selected Date:${date}`)
@@ -233,7 +233,7 @@ function Calendar({update=()=>{},onNext=function(date){
         pickerRef.current = rome(elementRef.current, {time:false,initialValue:start.format("MM/dd/yyyy"), "inputFormat": "MM/DD/YYYY", monthsInCalendar: Months });
         
         let lastSelected;
-        pickerRef.current.on('data', data => {
+        pickerRef.current.on('data', async data => {
             //console.warn(data)
             let m = new moment(data,"MM/dd/yyyy");
             let md = maxDate();
@@ -254,8 +254,48 @@ function Calendar({update=()=>{},onNext=function(date){
               lastSelected.Exit()
             }
 
-            elem.Exit = ()=>{
+            elem.Exit = (State={})=>{
               
+              //We exit with a state of Type and Time
+              //Date is already defined
+              if(Object.keys(State).length>1){
+                console.warn("Exit State",State)
+
+                onChange({
+                  Element:pickerRef.current.associated,
+                  Rome:pickerRef.current,
+                  RomeMap,
+                  
+                    "StartDate":data,//new moment(data,"MM/dd/yyyy hh:mm a"),
+                    "TimeRange":[...State.Time],
+                    [Object.keys(State)[0]]:State[Object.keys(State)[0]],
+                    "Type":Object.keys(State)[0],
+                  
+                  Apply
+                  
+                })
+                
+                switch(Object.keys(State)[0]){
+                  case "CurrentDay":
+
+                    
+
+                    break;
+
+                  case "Repeat":
+
+
+
+                    break;
+
+                  case "Range":
+
+
+
+                    break;
+                }
+              }
+
               //if(lastSelected?.innerText!=elem.innerText)
               ReactDOM.unmountComponentAtNode(elem)
 
@@ -266,19 +306,14 @@ function Calendar({update=()=>{},onNext=function(date){
             }
 
             console.warn("Create Portal",elem)
-            let portal = ReactDOM.render(
-              <>
-              <TimePicker Parent={elem.parentNode.parentNode}
-                  Day = {new moment()}
-                  Exit={elem.Exit}
-              ></TimePicker>
-              </>,
-              elem
-            ); 
+            //alert(elem.)
+            await onData({
+              data,elem
+            })
 
             lastSelected = elem;
 
-            console.warn("portal",portal)
+            //console.warn("portal",portal)
             /*
             onChange({
             Element:pickerRef.current.associated,
@@ -334,11 +369,12 @@ function Calendar({update=()=>{},onNext=function(date){
 
         console.warn("Months in current MAP:",monthsInCalendar(RomeMap))
 
+        /*
         DaySelected({
           Year:2024,
           Month:"September",
           Day:"25"
-        });
+        });*/
 
         //Make whatever changes necessary to the Rome
         update({
