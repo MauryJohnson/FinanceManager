@@ -35,7 +35,7 @@ function Table({rows}){
     let net = items.reduce((accumulator, currentValue, index, array) => {
         // Return the updated accumulator
 
-        return parseFloat(accumulator) + parseFloat(currentValue.amount||0);
+        return parseFloat(accumulator) + parseFloat((currentValue||{}).amount||0);
       }, 0);
 
     return (
@@ -54,7 +54,7 @@ function Table({rows}){
                 }
             </tr>
             <tr>
-            <td>Dates</td>
+            <td>Time</td>
                 {
                     items.map((data,i)=><Entry id={i} setItems={setItems} data={data} mode="time"  />)
                 }

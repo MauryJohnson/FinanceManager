@@ -59,7 +59,9 @@ function Entry({setItems,id,data,mode}){
             case "time":
                 return (
                     <Mutation   setItems={setItems} mode={mode} id={id} content={data.time} data={data}>
-                    <td  id={id} ></td>
+                    <td  id={id} >
+                        {data.time}
+                    </td>
                     </Mutation>
                 )
             case "duration":

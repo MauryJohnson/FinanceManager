@@ -53,6 +53,9 @@ app.use(cors());
   })
 
   app.post('/api/updateDB',async (req,res)=>{
+    let search = req.body.update[0];
+    if(search._id)
+      search._id = Mongo.ObjectID(search._id)
     res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).updateMany(...req.body.update));
   })
 
@@ -61,6 +64,9 @@ app.use(cors());
   })
 
   app.post('/api/removeDB',async (req,res)=>{
+    let search = req.body.remove;
+    if(search._id)
+      search._id = Mongo.ObjectID(search._id)
     res.json(await Mongo.Mongo.db(req.body.db).collection(req.body.collection).deleteMany(req.body.remove));
   })
 

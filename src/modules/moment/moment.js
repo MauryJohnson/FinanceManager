@@ -483,6 +483,17 @@ class moment{
 
   }
 
+  static fromDate(date){
+    let format = df.format(df.add(date,{
+      "hours":0
+    }),
+      "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    )
+
+    return new moment(format,`yyyy-MM-dd'T'HH:mm:ss.SSS'Z'`)
+    
+  }
+
   static min(m1,m2){
     if(df.isBefore(
       m1.date,

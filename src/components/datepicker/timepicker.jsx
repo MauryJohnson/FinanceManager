@@ -1,6 +1,7 @@
 import moment from '../../modules/moment/moment.js'
 import { useState, useEffect, createRef} from 'react';
 import React from 'react';
+import Bill from '../schedule/bill.jsx';
 import ReactDOM from 'react-dom';
 import fit from 'fit.js'
 import './calendar.css';
@@ -52,9 +53,11 @@ do{
 function TimePicker({
     Parent,
     Day,
+    hasBill = false,
     userData,
-    className,
+    UserColors,
     currentSchedule,
+    //Schedules,
     Exit=function({}){}
 }){
 
@@ -71,12 +74,151 @@ function TimePicker({
     let options2 = [...times]
 
 
+    let [Schedules,UpdateSchedules] = useState({})
     let [State,UpdateState] = useState({})
+    let [OriginalState,UpdateOriginal] = useState({})
     let [Users,UpdateUsers] = useState([])
+
+    /*
+
+        user_schedule
+        Pull color codes directly from color codes
+    */
+    function GetClassName({schedule}){
+
+    }
+    //
+    /*
+        Maury_PNC 
+        Maury_DEF
+        OPT_PNC
+        OPT_DEF
+    */
+    function GetClassName1(type){
+
+        let classNames = {}
+
+        if(State[type]){
+            if(UserColors[
+                `${userData.given_name}_${currentSchedule}`
+            ])
+                classNames[`${userData.given_name}_${currentSchedule}`] = UserColors[
+                    `${userData.given_name}_${currentSchedule}`
+                ]
+        }
+
+        for(var schedule in Schedules){
+            for(var user of Schedules[schedule].Users){
+                //console.warn("Find type",type,"For user",user)
+                if(user.Type==type){
+                    switch(user.Type){
+                        case "CurrentDay":
+                            //console.warn(user.StartDate == Day.format("MM/dd/yyyy"))
+                            if(user.StartDate == Day.format("MM/dd/yyyy")){
+                                //return `${user.name}_${schedule}`
+                                if(UserColors[
+                                    `${user.name}_${schedule}`
+                                ])
+                                classNames[`${user.name}_${schedule}`] = UserColors[
+                                    `${user.name}_${schedule}`
+                                ]
+                            }
+                            break;
+                        case "Repeat":
+                            let m2 = new moment(user.StartDate,"MM/dd/yyyy");
+
+                            if( Day.isSameOrAfter(new moment(user.StartDate,"MM/dd/yyyy")) &&
+                                m2.format("EEEE") === Day.format("EEEE") 
+                            ) {
+                                if(UserColors[
+                                    `${user.name}_${schedule}`
+                                ])
+                                classNames[`${user.name}_${schedule}`] = UserColors[
+                                    `${user.name}_${schedule}`
+                                ]
+                                
+                            }
+                            break;
+                    }
+                    
+                }
+            }
+        }
+
+        let cc = Object.keys(classNames)
+
+        if(cc.length==0){
+            return ""
+        }
+        else if(cc.length==1)
+            cc=[cc[0],cc[0]]
+
+        console.warn(classNames)
+        return `linear-gradient(0deg, ${
+            cc.map( (x,i)=>{
+                x = classNames[x];
+                
+                
+                return `rgb(${x.r},${x.g},${x.b})${
+                    i<cc.length-1?"":""
+                }`
+    
+            })
+        })`
+    }
+
+    function GetClassName2(time){
+        let classNames = {}
+
+        for(var schedule in Schedules){
+            for(var user of Schedules[schedule].Users){
+                //console.warn("Find type",type,"For user",user)
+                
+                if(isWithinTimeSync({
+                    Users:[user],
+                    a:new moment(Day.format("MM/dd/yyyy")+" "+time,"MM/dd/yyyy hh:mm a"),
+                    strict:true
+                }).length>0){
+
+                    //console.warn("Succeeded:",user)
+                    if(UserColors[
+                        `${user.name}_${schedule}`
+                    ])
+                    classNames[`${user.name}_${schedule}`] = UserColors[
+                        `${user.name}_${schedule}`
+                    ]
+
+                }
+                    
+                
+            }
+        }
+
+        //console.warn(classNames)
+        let cc = Object.keys(classNames)
+
+        if(cc.length==0)
+            return ""
+        else if(cc.length==1)
+            cc=[cc[0],cc[0]]
+
+        
+        return `linear-gradient(0deg, ${
+            cc.map( (x,i)=>{
+                x = classNames[x];
+                
+                
+                return `rgb(${x.r},${x.g},${x.b})${
+                    i<cc.length-1?"":""
+                }`
+    
+            })
+        })`
+    }
 
     const existingDiv = document.getElementById('existing-div');
     
-    console.warn(options)
+    //console.warn(options)
     
     let selected = {
         
@@ -86,7 +228,7 @@ function TimePicker({
 
     let delay = null;
 
-    function iwt(a,b){
+    function iwt(a,b,s){
 
         //if(b.length<2)
             //return true;
@@ -95,24 +237,25 @@ function TimePicker({
         let atime = a;//new mome1nt(a.format("hh:mm a"),"hh:mm a")
 
         //console.warn(atime,b)
-        let isAfter = true;
+        let isAfter = !s;
         
         if(b[0])
             isAfter = atime.isSameOrAfter(new moment(a.format("MM/dd/yyyy")+" "+b[0],"MM/dd/yyyy hh:mm a"))
         
-        let isBefore = true;
+        let isBefore = !s;
+
         if(b[1]) 
             isBefore = atime.isSameOrBefore(new moment(a.format("MM/dd/yyyy")+" "+b[1],"MM/dd/yyyy hh:mm a"))
-
+        //console.warn("IWT:",s,isAfter && isBefore)
         return  isAfter && isBefore
 
     }
 
-    function isWithinTimeSync({Users,a}){
+    function isWithinTimeSync({Users,a,strict=false}){
 
         return Users.map(u=> (
             (()=>{
-                let wt = iwt(a,u.TimeRange||[])
+                let wt = iwt(a,u.TimeRange||[],strict)
 
                 //console.warn(u)
                 switch(u.Type){
@@ -123,14 +266,14 @@ function TimePicker({
 
                     case "Repeat":
                         let m2 = new moment(u.StartDate,"MM/dd/yyyy");
-                        //console.warn(u.StartDate,u.TimeRange,"IWT:",iwt(a,u.TimeRange))
+                        console.warn(u.StartDate,a.format("MM/dd/yyyy"),"IWT:",iwt(a,u.TimeRange))
                         /*console.warn(
                             m2.format("EEEE") , a.format("EEEE"),
                         wt
                         )*/
-                        return u.StartDate == a.format("MM/dd/yyyy") &&
+                        return ( a.isSameOrAfter(new moment(u.StartDate,"MM/dd/yyyy")) &&/*u.StartDate == a.format("MM/dd/yyyy") &&*/
                         m2.format("EEEE") === a.format("EEEE") && 
-                        wt
+                        wt)
                 }
             }) () ? a:null       
         )).reduce( (au,u)=>{
@@ -149,48 +292,77 @@ function TimePicker({
     useEffect( ()=>{
 
         let s = async function(){
-        let users2 = await api("getDB", {
-            type: "aggregate",
-            database: "schedules",
-            collection: currentSchedule,
-            query: [{ $match: {name:userData.given_name} }],
-            options: { allowDiskUse: true },
-        });
-        
-        let Time=[]
-        for(var x of options2)
-            Time = Time.concat(isWithinTimeSync({
-                Users:users2,
-                a:new moment(Day.format("MM/dd/yyyy")+" "+x,"MM/dd/yyyy hh:mm a")
-            }))
-        console.warn("All Time",Time)
-        let Time2 = Time.map(t=>{
-            return t.format("MM/dd/yyyy hh:mm a")
-        });
-        Time = Time.filter((t,i)=>{
-            return Time2.indexOf(t.format("MM/dd/yyyy hh:mm a")) == i;
-        })
-        
-        let type = {};
-        for(var u of users2){
-            switch(u.Type){
-                case "CurrentDay":
-                    if(u.StartDate==Day.format("MM/dd/yyyy"))
-                        type = {[u.Type]:true}
-                    break;
-                case "Repeat":
-                    if(u.Repeat==Day.format("EEEE") && u.StartDate==Day.format("MM/dd/yyyy"))
-                        type = {[u.Type]:Day.format("EEEE")}
-                    break;
-            }
-        }
-        console.warn("A Type",type)
-        UpdateState({
-            ...type,
-            Time
-        })
-        UpdateUsers(users2)
+            
+            let schedules = await api("getCollections", { db: "schedules" });
+            
+            let Schedules = {};
 
+            for(var schedule of schedules){
+
+                let users2 = await api("getDB", {
+                    type: "aggregate",
+                    database: "schedules",
+                    collection: schedule,
+                    query: [{ $match: {name:userData.given_name} }],
+                    options: { allowDiskUse: true },
+                });
+                
+                let Time=[]
+                for(var x of options2)
+                    Time = Time.concat(isWithinTimeSync({
+                        Users:users2,
+                        a:new moment(Day.format("MM/dd/yyyy")+" "+x,"MM/dd/yyyy hh:mm a")
+                    }))
+                console.warn("All Time",Time)
+                let Time2 = Time.map(t=>{
+                    return t.format("MM/dd/yyyy hh:mm a")
+                });
+                Time = Time.filter((t,i)=>{
+                    return Time2.indexOf(t.format("MM/dd/yyyy hh:mm a")) == i;
+                })
+                
+                let type = {};
+                let _id;
+                for(var u of users2){
+                    switch(u.Type){
+                        case "CurrentDay":
+                            if(u.StartDate==Day.format("MM/dd/yyyy")){
+                                type = {[u.Type]:true}
+                                _id = u._id
+                            }
+                            break;
+                        case "Repeat":
+                            if(u.Repeat==Day.format("EEEE") && Day.isSameOrAfter(new moment(u.StartDate,"MM/dd/yyyy")) ){
+                                type = {[u.Type]:Day.format("EEEE")}
+                                _id = u._id
+                            }
+                            break;
+                    }
+                }
+                console.warn("A Type",type)
+
+                Schedules[schedule] = {
+                    _id,...type,Time,Users:users2
+                }
+
+                if(schedule === currentSchedule){
+                    console.warn("Current Sched",currentSchedule)
+                    UpdateState({
+                        _id,
+                        ...type,
+                        Time
+                    })
+                    UpdateOriginal({
+                        _id,
+                        ...type,
+                        Time
+                    })
+                    UpdateUsers(users2)
+                }
+                
+            }
+
+            UpdateSchedules(Schedules)
         /*
         options2.map(async (x,i)=>{ 
             let time = document.getElementById(x).innerText;
@@ -209,13 +381,16 @@ function TimePicker({
         })*/
     }()
 
-    },[])
+    },[]);
 
-    console.warn(State)
+    console.warn("Timepicker State",State)
     //alert(className)
     ///console.warn("TimePicker State",State)
     //alert(!!State.CurrentDay && i==0)
     // Render the React component under the existing div
+
+    
+
     return <>
         <div  id="parent" onMouseOver={(e)=>{
             //e.target.over=true;
@@ -250,7 +425,7 @@ function TimePicker({
                 if(true || e.target.id=="parent"){
                     rm = e.target;
                     //rm.parentNode.removeChild(rm)
-                    Exit();
+                    Exit({});
                 }
                 else{
                     //rm = e.target.parentNode;
@@ -268,15 +443,52 @@ function TimePicker({
             height:bounds.height*2,
             width:bounds.width*1.5
         }}>  
+            {
+                hasBill?<>
+                     Enter Bill Amount:
+                    <input style={{
+                        width:43
+                    }}onInput={(e)=>{
+                        
+                        let v =e.target.value;
+
+                        if(isNaN(v) && v!="-")
+                            v=0
+
+                        e.target.value = v;
+
+                        UpdateState({
+                            ...State,
+                            Bill:parseFloat(v)
+                        })
+                    }}>
+
+                    </input>
+                </>:<>
+                    Enter Description
+                    <textarea style={{
+                        height:bounds.height
+                    }}onInput={(e)=>{
+                        
+                        UpdateState({
+                            ...State,
+                            Description:e.target.value
+                        })
+
+                    }}>
+
+                    </textarea>
+                </>
+            }
             <div><div onMouseOver={(e)=>{
                             selected[e.target.id] = true;
 
             }}id="iconX" className="iconX" onClick={(e)=>{
                 //e.target.parentNode.parentNode.removeChild(e.target.parentNode);
-                Exit()
+                Exit({})
             }}>✖</div></div>
             <div id="iconCheck" onClick={(e)=>{
-                if(Object.keys(State).length==2){
+                if(Object.keys(State).length>=2){
                     if( /*Object.keys(State.Time).length==2 && 
                         */
                         (
@@ -285,16 +497,32 @@ function TimePicker({
                             State.Range
                         )
                     ){  
+
+
+                        //Post Manipulations
                         if(State.Time.length === options2.length)
                             State.Time = []
 
                         if(State.Time.length>2){
                             State.Time = [
-                                State.Time[0],State.Time[State.time.length-1]
+                                State.Time[0],State.Time[State.Time.length-1]
                             ]
                         }
+
+                        if(OriginalState.Time.length === options2.length)
+                            OriginalState.Time = []
+
+                        if(OriginalState.Time.length>2){
+                            OriginalState.Time = [
+                                OriginalState.Time[0],OriginalState.Time[OriginalState.Time.length-1]
+                            ]
+                        }
+
                         //CurrentDay, Repeat,Range 
-                        Exit(State)
+                        console.warn("Original State",OriginalState)
+                        console.warn("Current State",State)
+                        //State.currentSchedule=currentSchedule
+                        Exit({currentSchedule,State,State2:OriginalState})
                     
                     }
                 }
@@ -311,6 +539,10 @@ function TimePicker({
                                         ...State.Time||[]
                                     ]
                                 })
+                                if(!OriginalState.CurrentDay){
+                                    delete OriginalState._id
+                                    UpdateOriginal({...OriginalState})
+                                }
                             }
                             else if(e.target.innerText == options[1]){
                                 UpdateState({
@@ -319,6 +551,10 @@ function TimePicker({
                                         ...State.Time||[]
                                     ]
                                 })
+                                if(!OriginalState.Repeat){
+                                    delete OriginalState._id
+                                    UpdateOriginal({...OriginalState})
+                                }
                             }
                             else if(e.target.innerText == options[2]){
                                 UpdateState({
@@ -327,16 +563,15 @@ function TimePicker({
                                         ...State.Time||[]
                                     ]
                                 })
+                                if(!OriginalState.Range){
+                                    delete OriginalState._id
+                                    UpdateOriginal({...OriginalState})
+                                }
                             }
-                        }} className={(
-                            
-                            State.CurrentDay && i==0
-                            ||
-                            State.Repeat && i==1
-                            ||
-                            State.Range && i==2
-                    )?className:""} 
-                            style={{display:"inline-block",width:"90%",cursor:"pointer"}} onMouseOver={(e)=>{
+                        }}   
+                            style={{
+                                background:GetClassName1(i==0?"CurrentDay":i==1?"Repeat":i==2?"Range":""),
+                                display:"inline-block",width:"90%",cursor:"pointer"}} onMouseOver={(e)=>{
                             e.target.style.opacity="0.5"
                         }} onMouseOut={(e)=>{
                             e.target.style.opacity="1"
@@ -349,6 +584,7 @@ function TimePicker({
                         return <div id={x} onClick={(e)=>{
                             {
                                 let m = new moment(Day.format("MM/dd/yyyy")+" "+e.target.innerText,"MM/dd/yyyy hh:mm a")
+                                console.warn(m)
                                 let shift;
                                 let pop;
                                 if(selectedTimes.length>0){
@@ -430,7 +666,7 @@ function TimePicker({
                                 Users,
                                 a:new moment(Day.format("MM/dd/yyyy")+" "+x,"MM/dd/yyyy hh:mm a")
                             })*/
-                    )?className:""} 
+                    )?GetClassName2(x):""} 
                             style={{display:"inline-block",width:"90%",cursor:"pointer"}} onMouseOver={(e)=>{
                             e.target.style.opacity="0.5"
                         }} onMouseOut={(e)=>{
@@ -443,6 +679,7 @@ function TimePicker({
             </div>
             
         </div> 
+        
     </>;
 
 }

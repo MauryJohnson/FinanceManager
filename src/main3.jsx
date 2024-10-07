@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import api from './modules/api/api.js'
 import Schedule from './components/schedule/schedule.jsx'
+
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GoogleLogin } from '@react-oauth/google';
 import TimePicker from './components/datepicker/timepicker.jsx';
@@ -78,7 +79,7 @@ await async function(){
 };
 
   let root = createRoot(document.getElementById('root2'));
-  
+
   root.render(
     <StrictMode>
         <GoogleOAuthProvider clientId="318831092161-1drftkajdk5u2iqb2sqlk36usu5s76jv.apps.googleusercontent.com">
@@ -96,6 +97,7 @@ await async function(){
                 //let root = createRoot(document.getElementById('root3'));
                 setup.children[0].innerText = `Select ${userData.given_name}'s Schedule`;
 
+                
                 root.render(
                     <>
                         <Schedule setup={setup} root={root} userData={userData} data={

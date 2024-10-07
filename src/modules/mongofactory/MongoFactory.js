@@ -331,8 +331,8 @@ module.exports = function(Settings){
 
   MongoFactory.mongo= require('mongodb');
 
-  MongoFactory.ObjectID = function(){
-    return new MongoFactory.mongo.ObjectID();
+  MongoFactory.ObjectID = function(s){
+    return new MongoFactory.mongo.ObjectID(s);
   }
 
 

@@ -126,12 +126,16 @@ const StepMap = {
 // Include the crypto-js library
 
 //Datepicker allows multiple dates to dictate how many
-function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
+function Calendar({
+  Update,UpdateState,
+  min=undefined,
+  max=undefined,
+  dateValidator=undefined,
+  onData=()=>{},update=()=>{},onNext=function(date){
   console.warn("Next:",date)
 },onChange=function(date){
     console.warn(`Selected Date:${date}`)
 },StartTime,EndTime,Step=10}){
-
     let start;
     
     if(StartTime)
@@ -140,7 +144,7 @@ function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
     const elementRef = createRef(null);
     const pickerRef = createRef(null);
     let RomeMap = {};
-    let [Update,UpdateState] = useState(0);
+    
 
     function maxDate(){
       let date;
@@ -228,9 +232,45 @@ function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
       return max+1;
     } 
     
+    let obj = (x)=>{
+      
+      var s = ""
+      
+      let keys = Object.keys(x).sort((a,b)=>a.localeCompare(b));
+
+      for(var y of keys){
+        s+=y+x[y]
+      }
+      return s;
+    }
+
+    function DetermineOperation(State,State2){
+      console.warn(
+        "Compare Ops\n",
+        obj(State),"--VS--",obj(State2)
+      )
+      if(obj(State) === obj(State2)){
+        return "remove"
+      }
+      else if(State2._id){
+        return "update"
+      }
+      else{
+        return "add"
+      }
+      //If State IS existing (State2 length>=2)
+      //op is update (WE NEED THE OBJ ID!)
+
+      //IF state is NOT existing (State2 length<=1)
+      //op is insert (WE DONT NEED THE OBJ ID)
+
+      //If there is no difference between State and State2, operation is 
+      //Remove
+    }
+
     //useEffect is called after html is created.
     useEffect(() => {
-        pickerRef.current = rome(elementRef.current, {time:false,initialValue:start.format("MM/dd/yyyy"), "inputFormat": "MM/DD/YYYY", monthsInCalendar: Months });
+        pickerRef.current = rome(elementRef.current, {min,max,dateValidator,time:false,initialValue:start.format("MM/dd/yyyy"), "inputFormat": "MM/DD/YYYY", monthsInCalendar: Months });
         
         let lastSelected;
         pickerRef.current.on('data', async data => {
@@ -251,10 +291,10 @@ function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
             ][m.format("MMMM")][m.format("dd")]
 
             if(lastSelected?.Exit){
-              lastSelected.Exit()
+              lastSelected.Exit({})
             }
 
-            elem.Exit = (State={})=>{
+            elem.Exit = ({currentSchedule,State={},State2={}})=>{
               
               //We exit with a state of Type and Time
               //Date is already defined
@@ -270,7 +310,12 @@ function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
                     "TimeRange":[...State.Time],
                     [Object.keys(State)[0]]:State[Object.keys(State)[0]],
                     "Type":Object.keys(State)[0],
-                  
+                    Bill:State.Bill,
+                    Description:State.Description,
+                    currentSchedule:currentSchedule,
+                    operation:DetermineOperation(State,State2),
+
+                    previousState:State2,
                   Apply
                   
                 })
@@ -377,6 +422,7 @@ function Calendar({onData=()=>{},update=()=>{},onNext=function(date){
         });*/
 
         //Make whatever changes necessary to the Rome
+        console.warn("Updtaing")
         update({
           Element:pickerRef.current.associated,
           Rome:pickerRef.current,
